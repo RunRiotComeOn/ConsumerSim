@@ -1,0 +1,63 @@
+##############################################
+# ConsumerSim US Version Configuration
+##############################################
+
+data:
+  processed_dir: "C:/path/to/ConsumerSim/data/processed_us"
+  cache_dir: "C:/path/to/ConsumerSim/data/cache_us"
+  fred_api_key: ""
+  census_api_key: ""
+  news_api_key: ""
+  nyt_api_key: ""
+  nyt_us_only: true
+  guardian_api_key: ""
+  bing_api_key: ""
+  bing_endpoint: "https://api.bing.microsoft.com/v7.0/news/search"
+  news_provider: "nyt_archive"  # nyt_archive | nyt | guardian | bing | newsapi
+  guardian_us_only: false
+  use_ustr_signal: false
+  use_gdelt_signal: false
+  use_news_signal: true
+  use_trends_signal: false
+  trends_geo: "US"
+  trends_max_batches: 1
+  authoritative_news_domains:
+    - "reuters.com"
+    - "apnews.com"
+    - "bloomberg.com"
+    - "wsj.com"
+    - "ft.com"
+    - "cnbc.com"
+    - "nytimes.com"
+    - "washingtonpost.com"
+
+simulation:
+  total_agents: 5000
+  core_agent_ratio: 0.05
+  batch_size: 20
+  random_seed: 42
+  survey_window_cutoff_day: 10
+  data_integrity_fail_on_violation: true
+
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  base_url: ""
+  api_key: ""
+  api_key_env: "OPENAI_API_KEY"
+  max_retries: 3
+  temperature: 0.7
+  timeout: 60
+  max_tokens: 1024
+
+posterior:
+  prior_strength: 10
+
+index:
+  icc_components: ["PAGO", "DUR"]
+  ice_components: ["PEXP", "BUS12", "BUS5"]
+  ics_components: ["PAGO", "DUR", "PEXP", "BUS12", "BUS5"]
+
+output:
+  results_dir: "C:/path/to/ConsumerSim/results_us"
+  figures_dir: "C:/path/to/ConsumerSim/results_us/figures"
