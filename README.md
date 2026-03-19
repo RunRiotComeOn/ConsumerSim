@@ -1,92 +1,92 @@
 # ConsumerSim
 
-面向美国消费者信心的仿真项目。当前代码库的实际可执行版本是 `main_us.py`，目标是生成 Michigan 风格的消费者信心指标：
+ConsumerSim is a U.S. consumer sentiment simulation project. The currently runnable entry point is `main_us.py`, and the goal is to generate Michigan-style consumer sentiment indices:
 
 - `ICS` (`Index of Consumer Sentiment`)
 - `ICC` (`Index of Current Conditions`)
 - `ICE` (`Index of Consumer Expectations`)
 
-项目通过合成人口样本、抽取一部分核心代理做 LLM 推断，再用贝叶斯后验把结果扩展到全部代理，最终输出指数、验证结果和图表。
+The project combines a synthetic population, LLM inference over a subset of core agents, and Bayesian posterior expansion to the full population, then outputs indices, validation results, and plots.
 
-## 当前可执行入口
+## Current Entry Points
 
-主入口:
+Main entry point:
 
 ```bash
 python main_us.py
 ```
 
-辅助诊断脚本:
+Diagnostic script:
 
 ```bash
 python diagnose_llm.py --month 2025-03 --agents 100
 ```
 
-## 项目结构
+## Project Structure
 
 ```text
 ConsumerSim/
 ├─ config/
-│  └─ config_us.yaml               # 当前使用的配置
+│  └─ config_us.yaml               # Active runtime configuration
 ├─ data/
-│  ├─ cache_us/                    # 宏观数据/人口缓存
-│  ├─ ces/                         # CES 参数与原始数据
-│  └─ gss/                         # GSS 参数与原始数据
-├─ deps/                           # 本地 vendor 依赖目录
+│  ├─ cache_us/                    # Macro data / population cache
+│  ├─ ces/                         # CES parameters and raw data
+│  └─ gss/                         # GSS parameters and raw data
+├─ deps/                           # Local vendored dependencies
 ├─ docs/
 │  └─ profile_audit.md
-├─ notebooks/                      # 研究/实验 notebook
+├─ notebooks/                      # Research / experiment notebooks
 ├─ results_us/
-│  ├─ monthly_backtest.csv         # 月度回测结果
-│  └─ figures/                     # 图表输出目录
+│  ├─ monthly_backtest.csv         # Monthly backtest output
+│  └─ figures/                     # Plot output directory
 ├─ src/
 │  ├─ agents/
-│  │  ├─ base.py                   # 通用代理与响应结构
+│  │  ├─ base.py                   # Shared agent types and response structures
 │  │  └─ base_us.py                # USConsumerAgent
 │  ├─ behavior_model/
-│  │  ├─ demo_guidance_us.py       # 人口学先验/映射规则
-│  │  └─ predictor_us.py           # 贝叶斯后验扩展
+│  │  ├─ demo_guidance_us.py       # Demographic priors / mapping rules
+│  │  └─ predictor_us.py           # Bayesian posterior expansion
 │  ├─ data/
-│  │  ├─ macro_context.py          # 宏观上下文组装
-│  │  └─ *_collector.py            # FRED / Census / 新闻等采集器
+│  │  ├─ macro_context.py          # Macro context assembly
+│  │  └─ *_collector.py            # FRED / Census / news collectors, etc.
 │  ├─ evaluation/
-│  │  ├─ micro_us.py               # 微观验证
-│  │  └─ structural_us.py          # 结构验证
+│  │  ├─ micro_us.py               # Micro-level validation
+│  │  └─ structural_us.py          # Structural validation
 │  ├─ llm/
-│  │  ├─ inference_us.py           # OpenAI 兼容推理封装
-│  │  ├─ prompts_us.py             # 提示词构造
-│  │  └─ response_parser.py        # LLM 响应解析
+│  │  ├─ inference_us.py           # OpenAI-compatible inference wrapper
+│  │  ├─ prompts_us.py             # Prompt construction
+│  │  └─ response_parser.py        # LLM response parsing
 │  ├─ population/
-│  │  └─ builder_us.py             # 美国人口合成
+│  │  └─ builder_us.py             # U.S. synthetic population builder
 │  ├─ simulation/
-│  │  ├─ engine_us.py              # 单次仿真引擎
-│  │  ├─ monthly_runner.py         # 月度/回测/预测
-│  │  └─ index.py                  # ICS/ICC/ICE 计算
+│  │  ├─ engine_us.py              # Single-run simulation engine
+│  │  ├─ monthly_runner.py         # Monthly / backtest / forecast runner
+│  │  └─ index.py                  # ICS / ICC / ICE calculation
 │  └─ visualization/
-│     ├─ plots.py                  # 通用分布/分组图
-│     └─ plots_us.py               # US 专用图表
-├─ diagnose_llm.py                 # 诊断指定月份的 LLM 输出
-├─ main_us.py                      # 主入口
+│     ├─ plots.py                  # Shared distribution / breakdown plots
+│     └─ plots_us.py               # U.S.-specific plots
+├─ diagnose_llm.py                 # Diagnose LLM output for a target month
+├─ main_us.py                      # Main entry point
 ├─ README.md
-└─ requirements.txt                # Python 依赖
+└─ requirements.txt                # Python dependencies
 ```
 
-## 运行流程
+## Execution Flow
 
-当前代码里的实际流程如下:
+The current codebase follows this workflow:
 
-1. `USPopulationBuilder` 根据 ACS / CPS / GSS / CES 等数据构建美国合成人口。
-2. `USSimulationEngine.build_agents()` 创建代理，并按 `core_agent_ratio` 抽取核心代理。
-3. 如果不是 `--no-llm`，会先用最新或指定目标的 Michigan `UMCSENT` 对先验做校准。
-4. 单次运行会拉取宏观上下文；月度运行会按目标月份构建该月可见的数据窗口。
-5. `USLLMInferenceEngine` 只对核心代理做 LLM 推断。
-6. `USBayesianPredictor` 用核心代理回答更新后验，再为普通代理补全回答。
-7. `compute_indices()` 计算 `ICS / ICC / ICE` 以及各题目的相对指数。
-8. 单次运行会导出 CSV、验证结果和图表；月度回测会输出 `monthly_backtest.csv`。
+1. `USPopulationBuilder` constructs a synthetic U.S. population from ACS / CPS / GSS / CES and related sources.
+2. `USSimulationEngine.build_agents()` creates agents and samples core agents using `core_agent_ratio`.
+3. Unless `--no-llm` is used, the prior is calibrated with the latest or target Michigan `UMCSENT`.
+4. Single-run mode fetches macro context; monthly mode builds a month-specific visible data window.
+5. `USLLMInferenceEngine` runs LLM inference only for core agents.
+6. `USBayesianPredictor` updates the posterior from core-agent responses and fills responses for the remaining agents.
+7. `compute_indices()` calculates `ICS / ICC / ICE` and the component-level relative indices.
+8. Single-run mode exports CSVs, validation outputs, and figures; monthly backtests write `monthly_backtest.csv`.
 
-## 支持的运行模式
+## Supported Run Modes
 
-### 1. 单次仿真
+### 1. Single Simulation
 
 ```bash
 python main_us.py
@@ -95,107 +95,107 @@ python main_us.py --no-llm
 python main_us.py --config config/config_us.yaml
 ```
 
-说明:
+Notes:
 
-- 默认 `--mode single`
-- `--no-llm` 会跳过 LLM 调用，改用 `_inject_synthetic_responses()` 生成测试回答
-- 单次模式会输出结果表、验证表和图表
+- Default mode is `--mode single`
+- `--no-llm` skips LLM calls and uses `_inject_synthetic_responses()` to generate test responses
+- Single-run mode outputs result tables, validation tables, and figures
 
-### 2. 指定月份仿真
+### 2. Simulation for a Specific Month
 
 ```bash
 python main_us.py --mode monthly --month 2025-06
 python main_us.py --mode monthly --month 2025-06 --agents 1000
 ```
 
-说明:
+Notes:
 
-- 实际执行逻辑在 `src/simulation/monthly_runner.py`
-- 会按目标月份构造 survey window，避免直接看未来数据
-- 会优先用前一个月的真实 `UMCSENT` 作为先验锚点
+- The main implementation lives in `src/simulation/monthly_runner.py`
+- It constructs a survey window for the target month to avoid leaking future data
+- It prioritizes the previous month's real `UMCSENT` as a prior anchor
 
-### 3. 历史回测
+### 3. Historical Backtest
 
 ```bash
 python main_us.py --mode backtest --start 2024-06 --end 2026-01
 ```
 
-说明:
+Notes:
 
-- 按月循环执行
-- 输出 `results_us/monthly_backtest.csv`
-- 若有足够真实值，会打印相关系数、`MAE`、`RMSE`
+- Runs month by month
+- Outputs `results_us/monthly_backtest.csv`
+- If enough ground truth values are available, it reports correlation, `MAE`, and `RMSE`
 
-### 4. 当月预测
+### 4. Current-Month Forecast
 
 ```bash
 python main_us.py --mode forecast
 ```
 
-说明:
+Notes:
 
-- 当前实现调用 `MonthlyRunner.forecast_next_month()`
-- 实际上是对“当前月份”执行一次月度仿真
+- The current implementation calls `MonthlyRunner.forecast_next_month()`
+- In practice, this runs a monthly simulation for the current month
 
-## 诊断脚本
+## Diagnostic Script
 
-`diagnose_llm.py` 用来排查某个月的 LLM 推断是否合理:
+`diagnose_llm.py` is used to inspect whether LLM inference for a given month looks reasonable:
 
 ```bash
 python diagnose_llm.py --month 2025-03 --agents 100
 ```
 
-它会输出:
+It outputs:
 
-- 发送给 LLM 的宏观上下文
-- 核心代理回答分布
-- 核心代理 `ICS`
-- 后验扩展后的最终 `ICS`
-- 目标月份真实 `ICS`（如果能取到）
-- 部分核心代理画像样例
+- The macro context sent to the LLM
+- The response distribution of core agents
+- Core-agent `ICS`
+- Final `ICS` after posterior expansion
+- Ground-truth `ICS` for the target month, if available
+- Example profiles of selected core agents
 
-## 配置说明
+## Configuration
 
-当前运行配置文件是 `config/config_us.yaml`，主要包含以下部分:
+The active runtime configuration file is `config/config_us.yaml`, which mainly contains the following sections:
 
 ### `data`
 
-- `processed_dir`: 处理后数据目录
-- `cache_dir`: 缓存目录
+- `processed_dir`: processed data directory
+- `cache_dir`: cache directory
 - `fred_api_key`: FRED key
 - `census_api_key`: Census API key
 - `news_api_key`: NewsAPI key
 - `nyt_api_key`: New York Times Archive API key
 - `guardian_api_key`: Guardian API key
-- `bing_api_key`: Bing News Search key；代码支持，但当前配置文件默认未填写
-- `bing_endpoint`: Bing 接口地址
+- `bing_api_key`: Bing News Search key; supported by the code, though not filled by default in the current config
+- `bing_endpoint`: Bing API endpoint
 - `news_provider`: `nyt_archive | nyt | guardian | bing | newsapi`
-- `nyt_us_only`, `guardian_us_only`: 新闻过滤选项
-- `use_ustr_signal`, `use_gdelt_signal`, `use_news_signal`, `use_trends_signal`: 是否启用对应宏观信号
-- `trends_geo`, `trends_max_batches`: Google Trends 配置
-- `authoritative_news_domains`: NewsAPI 允许的新闻域名白名单
+- `nyt_us_only`, `guardian_us_only`: news filtering options
+- `use_ustr_signal`, `use_gdelt_signal`, `use_news_signal`, `use_trends_signal`: whether to enable each macro signal
+- `trends_geo`, `trends_max_batches`: Google Trends settings
+- `authoritative_news_domains`: whitelist of allowed domains for NewsAPI
 
 ### `simulation`
 
-- `total_agents`: 总代理数
-- `core_agent_ratio`: 核心代理比例
-- `batch_size`: 每批 LLM 推理代理数
-- `random_seed`: 随机种子
-- `survey_window_cutoff_day`: 调查窗口截断日
-- `data_integrity_fail_on_violation`: 月度模式下数据完整性不满足时是否直接失败
+- `total_agents`: total number of agents
+- `core_agent_ratio`: share of core agents
+- `batch_size`: number of agents per LLM inference batch
+- `random_seed`: random seed
+- `survey_window_cutoff_day`: survey window cutoff day
+- `data_integrity_fail_on_violation`: whether monthly mode should fail immediately when data integrity checks fail
 
 ### `llm`
 
-- `provider`: 当前默认是 `openai`
-- `model`: 当前默认是 `gpt-4o-mini`
-- `base_url`: OpenAI 兼容接口地址；留空时走默认 OpenAI 地址
-- `api_key`: 支持直接写在配置中的 key
-- `api_key_env`: 也支持从环境变量读取，当前字段是 `OPENAI_API_KEY`
+- `provider`: current default is `openai`
+- `model`: current default is `gpt-4o-mini`
+- `base_url`: OpenAI-compatible base URL; if empty, the default OpenAI endpoint is used
+- `api_key`: can be written directly in the config
+- `api_key_env`: can also be read from an environment variable; the current field is `OPENAI_API_KEY`
 - `max_retries`, `temperature`, `timeout`, `max_tokens`
 
 ### `posterior`
 
-- `prior_strength`: 后验先验强度
+- `prior_strength`: posterior prior strength
 
 ### `index`
 
@@ -208,9 +208,9 @@ python diagnose_llm.py --month 2025-03 --agents 100
 - `results_dir`
 - `figures_dir`
 
-## 输出文件
+## Output Files
 
-当前代码默认会写到 `results_us/`:
+By default, the current code writes outputs to `results_us/`:
 
 - `results_us/us_simulation_results.csv`
 - `results_us/us_micro_validation.csv`
@@ -222,9 +222,9 @@ python diagnose_llm.py --month 2025-03 --agents 100
 - `results_us/figures/us_validation_summary.png`
 - `results_us/figures/*.png`
 
-## 数据与缓存
+## Data and Cache
 
-当前项目会使用或生成这些本地数据:
+The project currently uses or generates the following local data:
 
 - `data/cache_us/*.parquet`
 - `data/cache_us/*.json`
@@ -234,19 +234,19 @@ python diagnose_llm.py --month 2025-03 --agents 100
 - `data/gss/2022/GSS2022.dta`
 - `data/gss/gss_params.json`
 
-其中:
+Notes:
 
-- 人口缓存用于加速合成人口生成
-- 各类 `collector` 会把宏观数据和新闻摘要缓存在 `data/cache_us`
-- `deps/` 是当前仓库内的本地依赖目录，不属于核心源码结构，但运行时会被导入使用
+- Population caches are used to speed up synthetic population generation
+- Each `collector` caches macro data and news summaries in `data/cache_us`
+- `deps/` is a local dependency directory inside the repository; it is not part of the core source tree, but it is imported at runtime
 
-## 安装依赖
+## Install Dependencies
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-当前 `requirements.txt` 中的主要依赖包括:
+The main dependencies currently listed in `requirements.txt` include:
 
 - `pandas`
 - `numpy`
@@ -262,21 +262,21 @@ python -m pip install -r requirements.txt
 - `pydantic`
 - `matplotlib`
 
-## 运行前建议
+## Recommended Before Running
 
-- 先检查 `config/config_us.yaml` 中的路径是否适合当前机器。
-- 如果不想在配置文件里放密钥，优先改成环境变量方式。
-- 首次跑建议先用较小样本，例如 `--agents 100` 或 `--agents 500`。
-- 如果只想验证流程是否打通，可以先跑 `--no-llm`。
+- Check whether the paths in `config/config_us.yaml` fit your machine
+- If you do not want to store keys in the config file, prefer using environment variables
+- For a first run, start with a smaller sample such as `--agents 100` or `--agents 500`
+- If you only want to verify the pipeline end to end, start with `--no-llm`
 
-## 当前 README 与代码对齐说明
+## README Alignment Notes
 
-这份 README 按当前代码实际行为整理，重点对齐了下面几点:
+This README is aligned to the code as it currently behaves, especially in the following ways:
 
-- 项目当前只有 US 主入口，没有其他国家入口
-- 主执行脚本是 `main_us.py`
-- 月度、回测、预测都由 `MonthlyRunner` 驱动
-- 诊断入口 `diagnose_llm.py` 已纳入说明
-- 配置项名称按 `config/config_us.yaml` 当前字段更新
-- `llm` 默认值已按当前配置更新为 `openai / gpt-4o-mini`
-- 输出文件名按当前代码实际导出路径更新
+- The project currently has only a U.S. entry point; there is no other country entry point
+- The main executable script is `main_us.py`
+- Monthly runs, backtests, and forecasts are all driven by `MonthlyRunner`
+- The diagnostic entry point `diagnose_llm.py` is included
+- Configuration field names are updated to match `config/config_us.yaml`
+- The default `llm` values are updated to `openai / gpt-4o-mini`
+- Output filenames are updated to match the actual export paths in the codebase
